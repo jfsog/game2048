@@ -6,7 +6,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/types.h>
-#define N 3
+#define N 4
 #define TEXTSIZE 30
 typedef struct {
   uint tab[N * N];
@@ -14,8 +14,8 @@ typedef struct {
   uint points;
   bool end;
 } game_t;
-const int WIDTH = 600;
-const int HEIGHT = 720;
+const int WIDTH = N * 200;
+const int HEIGHT = WIDTH + 100;
 const int DESL = HEIGHT - WIDTH;
 const int BLOCKSIZE = WIDTH / N;
 int digitAmount(uint num) {
@@ -117,7 +117,7 @@ void drawGame(game_t *game) {
   DrawText(buff, 0, 0, TEXTSIZE, GREEN);
   if (game->end) {
     sprintf(buff, "Fim de Jogo!\nPressione espaco para continuar!");
-    DrawText(buff, 0, TEXTSIZE, TEXTSIZE, RED);
+    DrawText(buff, 0, TEXTSIZE, TEXTSIZE * 0.8, RED);
   }
   DrawLine(0, DESL, WIDTH, DESL, GREEN);
   for (int i = 0; i < N * N; i++) {
@@ -158,6 +158,8 @@ int main(void) {
       memcpy(p, game.tab, sizeof(uint) * N * N);
       direcoes[key - 262](&game);
       int disp = countEmpty(&game);
+      if (disp == 0)
+        game.end = checkGameOver(&game);
       if (!compareGameStates(&game, p)) {
         putrand(&game, 1, disp);
       }
