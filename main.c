@@ -6,18 +6,18 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/types.h>
-#define N 3
-#define TEXTSIZE 30
+#define N 4
 typedef struct {
   uint tab[N * N];
   uint empty[N * N];
   uint points;
   bool end;
 } game_t;
-const int WIDTH = 600;
-const int HEIGHT = 720;
-const int DESL = HEIGHT - WIDTH;
-const int BLOCKSIZE = WIDTH / N;
+const int BLOCKSIZE = 200;
+const int DESL = 100;
+const int WIDTH = N * BLOCKSIZE;
+const int HEIGHT = WIDTH + DESL;
+const int TEXTSIZE = BLOCKSIZE / 10;
 int digitAmount(uint num) {
   int c = 0;
   do
@@ -114,20 +114,20 @@ void printGame(game_t *game) {
 void drawGame(game_t *game) {
   static char buff[1024];
   sprintf(buff, "Pontuação: %d", game->points);
-  DrawText(buff, 0, 0, TEXTSIZE, GREEN);
+  DrawText(buff, 0, 0, TEXTSIZE * 2, GREEN);
   if (game->end) {
     sprintf(buff, "Fim de Jogo!\nPressione espaco para continuar!");
-    DrawText(buff, 0, TEXTSIZE, TEXTSIZE, RED);
+    DrawText(buff, 0, TEXTSIZE, TEXTSIZE * 0.8, RED);
   }
   DrawLine(0, DESL, WIDTH, DESL, GREEN);
   for (int i = 0; i < N * N; i++) {
-    int x = i % N * BLOCKSIZE;
+    int x = (i % N) * BLOCKSIZE;
     int y = (i / N * BLOCKSIZE) + DESL;
     DrawRectangle(x, y, BLOCKSIZE, BLOCKSIZE, LIGHTGRAY);
     if (game->tab[i] != 0) {
       int d = digitAmount(game->tab[i]);
-      sprintf(buff, "%*u", 8 + d / 2, game->tab[i]);
-      DrawText(buff, x, y + BLOCKSIZE / 2 - TEXTSIZE / 2, TEXTSIZE, RED);
+      sprintf(buff, "%u", game->tab[i]);
+      DrawText(buff, x + BLOCKSIZE / 4, y + TEXTSIZE * d, BLOCKSIZE / d, RED);
     }
   }
   for (int i = 1; i < N; i++) {
@@ -158,6 +158,8 @@ int main(void) {
       memcpy(p, game.tab, sizeof(uint) * N * N);
       direcoes[key - 262](&game);
       int disp = countEmpty(&game);
+      if (disp == 0)
+        game.end = checkGameOver(&game);
       if (!compareGameStates(&game, p)) {
         putrand(&game, 1, disp);
       }
