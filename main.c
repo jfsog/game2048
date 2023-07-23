@@ -1,21 +1,32 @@
+#include <assert.h>
+#include <limits.h>
+#include <raylib.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <sys/types.h>
 #define N 3
+#define TEXTSIZE 30
 typedef struct {
-  int tab[N * N];
+  uint tab[N * N];
+  uint empty[N * N];
+  uint points;
   bool end;
 } game_t;
-int digitAmount(int num) {
+const int WIDTH = 600;
+const int HEIGHT = 720;
+const int DESL = HEIGHT - WIDTH;
+const int BLOCKSIZE = WIDTH / N;
+int digitAmount(uint num) {
   int c = 0;
   do
     c++, num /= 10;
   while (num > 0);
   return c;
 }
-int greaterNum(game_t *game) {
-  int max = game->tab[0];
+uint greaterNum(game_t *game) {
+  uint max = game->tab[0];
   for (int i = 1; i < N * N; i++) {
     if (game->tab[i] > max)
       max = game->tab[i];
@@ -24,38 +35,56 @@ int greaterNum(game_t *game) {
 }
 int countEmpty(game_t *game) {
   int c = 0;
-  for (int i = 0; i < N * N; i++)
-    c += (game->tab[i] == 0);
+  for (int i = 0; i < N * N; i++) {
+    if (game->tab[i] == 0)
+      game->empty[c++] = i;
+  }
   return c;
+}
+void swap(uint *arr, int i1, int i2) {
+  uint t = arr[i1];
+  arr[i1] = arr[i2];
+  arr[i2] = t;
+}
+bool checkGameOver(game_t *game) {
+  for (int i = 0; i < N; i++) {
+    for (int j = 0; j < N - 1; j++) {
+      int id1 = i * N + j;
+      int id2 = j * N + i;
+      if (game->tab[id1] == game->tab[id1 + 1] ||
+          game->tab[id2] == game->tab[id2 + N]) {
+        return false;
+      }
+    }
+  }
+  return true;
 }
 void putrand(game_t *game, int count) {
   int disponivel = countEmpty(game);
   if (disponivel == 0) {
-    game->end = true;
+    game->end = checkGameOver(game);
     return;
   }
   while (count > 0) {
-    int rd;
-    do
-      rd = rand() % (N * N);
-    while (game->tab[rd] != 0);
-    game->tab[rd] = 2;
+    int rd = rand() % disponivel;
+    game->tab[game->empty[rd]] = 2;
+    swap(game->empty, rd, --disponivel);
     count--;
   }
 }
 void simpleMov(game_t *game, int start, int step) {
-  static int temp[N];
+  static uint temp[N];
   int idx = 0;
   for (int i = start, c = 0; c < N; i += step, c++) {
     if (game->tab[i] != 0) {
-      if (idx > 0 && temp[idx - 1] == game->tab[i])
+      if (idx > 0 && temp[idx - 1] == game->tab[i]) {
         temp[idx - 1] += game->tab[i];
-      else
+        game->points += game->tab[i];
+      } else
         temp[idx++] = game->tab[i];
       game->tab[i] = 0;
     }
   }
-
   for (int i = start, ii = 0; ii < idx; i += step, ii++)
     game->tab[i] = temp[ii];
 }
@@ -69,7 +98,7 @@ void gameDown(game_t *game) {
 }
 void gameLeft(game_t *game) {
   for (int i = 0; i < N * N; i += N)
-    simpleMov(game, i, -1);
+    simpleMov(game, i, 1);
 }
 void gameRight(game_t *game) {
   for (int i = N - 1; i < N * N; i += N)
@@ -79,14 +108,64 @@ void printGame(game_t *game) {
   int max = greaterNum(game);
   int d = digitAmount(max) + 1;
   for (int i = 0; i < N * N; i++)
-    printf("[%*d ]%c", d, game->tab[i], (i + 1) % N == 0 ? '\n' : ' ');
+    printf("[%*u ]%c", d, game->tab[i], (i + 1) % N == 0 ? '\n' : ' ');
   printf("\n");
 }
+void drawGame(game_t *game) {
+  static char buff[1024];
+  sprintf(buff, "Pontuação: %d", game->points);
+  DrawText(buff, 0, 0, TEXTSIZE, GREEN);
+  if (game->end) {
+    sprintf(buff, "Fim de Jogo!\nPressione espaco para continuar!");
+    DrawText(buff, 0, TEXTSIZE, TEXTSIZE, RED);
+  }
+  DrawLine(0, DESL, WIDTH, DESL, GREEN);
+  for (int i = 0; i < N * N; i++) {
+    int x = i % N * BLOCKSIZE;
+    int y = (i / N * BLOCKSIZE) + DESL;
+    DrawRectangle(x, y, BLOCKSIZE, BLOCKSIZE, LIGHTGRAY);
+    if (game->tab[i] != 0) {
+      int d = digitAmount(game->tab[i]);
+      sprintf(buff, "%*u", 8 + d / 2, game->tab[i]);
+      DrawText(buff, x, y + BLOCKSIZE / 2 - TEXTSIZE / 2, TEXTSIZE, RED);
+    }
+  }
+  for (int i = 1; i < N; i++) {
+    int nht = i * BLOCKSIZE;
+    DrawLine(0, nht + DESL, WIDTH, nht + DESL, GREEN);
+    DrawLine(nht, DESL, nht, HEIGHT, GREEN);
+  }
+}
+void (*direcoes[])(game_t *) = {gameRight, gameLeft, gameDown, gameUp};
+bool compareGameStates(game_t *game, uint *prev) {
+  for (int i = 0; i < N * N; i++) {
+    if (game->tab[i] != prev[i])
+      return false;
+  }
+  return true;
+}
 int main(void) {
-  game_t *game = calloc(sizeof(game_t), 1);
-  putrand(game, 6);
-  printGame(game);
-  gameRight(game);
-  printGame(game);
+  InitWindow(WIDTH, HEIGHT, "Jogo 2048");
+  SetTargetFPS(10);
+  game_t game = {.tab = {0}, .empty = {0}, .end = false, .points = 0};
+  putrand(&game, 2);
+  while (!WindowShouldClose()) {
+    BeginDrawing();
+    ClearBackground(RAYWHITE);
+    int key = 0;
+    if ((key = GetKeyPressed()) != 0 && (key >= 262 && key <= 265)) {
+      static uint p[N * N];
+      memcpy(p, game.tab, sizeof(uint) * N * N);
+      direcoes[key - 262](&game);
+      if (!compareGameStates(&game, p)) {
+        putrand(&game, 1);
+      }
+    } else if (key == 32 && game.end) {
+      memset(&game, 0, sizeof(game));
+    }
+    drawGame(&game);
+    EndDrawing();
+  }
+  CloseWindow();
   return 0;
 }
