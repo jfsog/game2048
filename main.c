@@ -6,6 +6,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/types.h>
+#include <time.h>
 #define N 4
 typedef struct {
   uint tab[N * N];
@@ -60,28 +61,29 @@ bool checkGameOver(game_t *game) {
   return true;
 }
 void putrand(game_t *game, int count, int disp) {
-  int disponivel = countEmpty(game);
-  if (disponivel == 0) {
-    game->end = checkGameOver(game);
+  if (disp == 0)
     return;
-  }
   while (count > 0) {
-    int rd = rand() % disponivel;
+    int rd = rand() % disp;
     game->tab[game->empty[rd]] = 2;
-    swap(game->empty, rd, --disponivel);
+    swap(game->empty, rd, --disp);
     count--;
   }
 }
 void simpleMov(game_t *game, int start, int step) {
   static uint temp[N];
   int idx = 0;
+  bool sum = false;
   for (int i = start, c = 0; c < N; i += step, c++) {
     if (game->tab[i] != 0) {
-      if (idx > 0 && temp[idx - 1] == game->tab[i]) {
+      if (sum && idx > 0 && temp[idx - 1] == game->tab[i]) {
         temp[idx - 1] += game->tab[i];
         game->points += game->tab[i];
-      } else
+        sum = false;
+      } else {
         temp[idx++] = game->tab[i];
+        sum = true;
+      }
       game->tab[i] = 0;
     }
   }
@@ -145,10 +147,11 @@ bool compareGameStates(game_t *game, uint *prev) {
   return true;
 }
 int main(void) {
+  srand(time(0));
   InitWindow(WIDTH, HEIGHT, "Jogo 2048");
   SetTargetFPS(10);
   game_t game = {.tab = {0}, .empty = {0}, .end = false, .points = 0};
-  putrand(&game, 2, N * N);
+  putrand(&game, 2, countEmpty(&game));
   while (!WindowShouldClose()) {
     BeginDrawing();
     ClearBackground(RAYWHITE);
