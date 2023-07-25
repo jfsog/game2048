@@ -65,7 +65,7 @@ void putrand(game_t *game, int count, int disp) {
     return;
   while (count > 0) {
     int rd = rand() % disp;
-    game->tab[game->empty[rd]] = 2;
+    game->tab[game->empty[rd]] = (rand() % 10) <= 1 ? 4 : 2;
     swap(game->empty, rd, --disp);
     count--;
   }
@@ -77,8 +77,7 @@ void simpleMov(game_t *game, int start, int step) {
   for (int i = start, c = 0; c < N; i += step, c++) {
     if (game->tab[i] != 0) {
       if (sum && idx > 0 && temp[idx - 1] == game->tab[i]) {
-        temp[idx - 1] += game->tab[i];
-        game->points += game->tab[i];
+        game->points += temp[idx - 1] += game->tab[i];
         sum = false;
       } else {
         temp[idx++] = game->tab[i];
@@ -119,7 +118,7 @@ void drawGame(game_t *game) {
   DrawText(buff, 0, 0, TEXTSIZE * 2, GREEN);
   if (game->end) {
     sprintf(buff, "Fim de Jogo!\nPressione espaco para continuar!");
-    DrawText(buff, 0, TEXTSIZE, TEXTSIZE * 0.8, RED);
+    DrawText(buff, 0, TEXTSIZE * 2, TEXTSIZE, RED);
   }
   DrawLine(0, DESL, WIDTH, DESL, GREEN);
   for (int i = 0; i < N * N; i++) {
