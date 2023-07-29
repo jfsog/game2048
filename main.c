@@ -1,11 +1,9 @@
-#include <assert.h>
 #include <limits.h>
 #include <raylib.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <sys/types.h>
 #include <time.h>
 #define N 4
 typedef struct {
@@ -19,6 +17,9 @@ const int DESL = 100;
 const int WIDTH = N * BLOCKSIZE;
 const int HEIGHT = WIDTH + DESL;
 const int TEXTSIZE = BLOCKSIZE / 10;
+Color BACKGROUNDCOLOR = CLITERAL(Color){205, 193, 180, 200};
+static char buff[1024];
+
 int digitAmount(uint num) {
   int c = 0;
   do
@@ -112,25 +113,50 @@ void printGame(game_t *game) {
     printf("[%*u ]%c", d, game->tab[i], (i + 1) % N == 0 ? '\n' : ' ');
   printf("\n");
 }
-void drawGame(game_t *game) {
-  static char buff[1024];
+void drawInfo(game_t *game) {
   sprintf(buff, "Pontuação: %d", game->points);
   DrawText(buff, 0, 0, TEXTSIZE * 2, GREEN);
   if (game->end) {
     sprintf(buff, "Fim de Jogo!\nPressione espaco para continuar!");
     DrawText(buff, 0, TEXTSIZE * 2, TEXTSIZE, RED);
   }
-  DrawLine(0, DESL, WIDTH, DESL, GREEN);
-  for (int i = 0; i < N * N; i++) {
+}
+Color colorForCell(uint p) {
+  static Color cores[] = {
+      CLITERAL(Color){238, 228, 218, 255}, CLITERAL(Color){237, 224, 200, 255},
+      CLITERAL(Color){242, 177, 121, 255}, CLITERAL(Color){245, 149, 99, 255},
+      CLITERAL(Color){245, 149, 99, 255},  CLITERAL(Color){237, 207, 114, 255},
+      CLITERAL(Color){237, 207, 114, 255}, CLITERAL(Color){237, 204, 97, 255},
+      CLITERAL(Color){237, 200, 80, 255},  CLITERAL(Color){255, 150, 0, 255}};
+  int count = -2;
+  while (p > 0)
+    p >>= 1, count++;
+  return count > 10 ? BLACK : cores[count];
+}
+void drawCell(game_t *game, int i) {
+  if (game->tab[i] != 0) {
     int x = (i % N) * BLOCKSIZE;
     int y = (i / N * BLOCKSIZE) + DESL;
-    DrawRectangle(x, y, BLOCKSIZE, BLOCKSIZE, LIGHTGRAY);
-    if (game->tab[i] != 0) {
-      int d = digitAmount(game->tab[i]);
-      sprintf(buff, "%u", game->tab[i]);
-      DrawText(buff, x + BLOCKSIZE / 4, y + TEXTSIZE * d, BLOCKSIZE / d, RED);
-    }
+    // ColorBrightness(ORANGE, (float)1 / (N * N) * i);
+
+    Color c = colorForCell(game->tab[i]);
+    Rectangle rec = {.x = x + 1,
+                     .y = y + 1,
+                     .height = BLOCKSIZE - 2,
+                     .width = BLOCKSIZE - 2};
+    DrawRectangleRounded(rec, 0.1f, 5, c);
+    int d = digitAmount(game->tab[i]);
+    sprintf(buff, "%u", game->tab[i]);
+    DrawText(buff, x + BLOCKSIZE / 4, y + TEXTSIZE * d, BLOCKSIZE / d, WHITE);
   }
+}
+void drawGame(game_t *game) {
+  drawInfo(game);
+  DrawRectangle(0, DESL, WIDTH, HEIGHT - DESL, BACKGROUNDCOLOR);
+  DrawLine(0, DESL, WIDTH, DESL, GREEN);
+
+  for (int i = 0; i < N * N; i++)
+    drawCell(game, i);
   for (int i = 1; i < N; i++) {
     int nht = i * BLOCKSIZE;
     DrawLine(0, nht + DESL, WIDTH, nht + DESL, GREEN);
